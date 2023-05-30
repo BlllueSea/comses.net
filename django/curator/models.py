@@ -1,9 +1,11 @@
-import json
-import logging
 import os
 import re
-
+import json
+import pickle
+import logging
 from collections import defaultdict
+
+import modelcluster.fields
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth.models import User
 from django.contrib.postgres.aggregates import ArrayAgg
@@ -15,6 +17,8 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 from taggit.models import Tag
+
+from core.models import MemberProfile
 
 from library.models import ProgrammingLanguage, CodebaseReleasePlatformTag
 
@@ -360,3 +364,31 @@ class CanonicalTagMapping(models.Model):
 
     def __str__(self):
         return f"tag={self.tag} canonical_tag={self.canonical_tag.name} confidence={self.confidence_score}"
+
+class SpamRecommendation(models.Model):
+    member_profile = models.OneToOneField(MemberProfile, on_delete=models.CASCADE, primary_key=True)
+    labelled_by_bio_classifier = models.BooleanField(default=None, null=True) 
+    bio_classifier_confidence = models.FloatField(default=0) 
+
+    labelled_by_user_classifier = models.BooleanField(default=None, null=True) 
+    user_classifier_confidence = models.FloatField(default=0) 
+
+    labelled_by_curator = models.BooleanField(default=None, null=True)
+    date_updated = models.DateField(auto_now=True)
+
+    @staticmethod
+    def get_recommendations_sorted_by_confidence():
+        return SpamRecommendation.objects.all().order_by('bio_classifier_confidence')
+    
+    def __str__(self):
+        return "user={}, labelled_by_bio_classifier={}, bio_classifier_confidence={}, labelled_by_user_classifier={}, user_classifier_confidence={}, date_updated={}".format(
+            str(self.member_profile), 
+            str(self.labelled_by_bio_classifier), 
+            str(self.bio_classifier_confidence),
+
+            str(self.labelled_by_user_classifier), 
+            str(self.user_classifier_confidence),
+
+            str(self.labelled_by_curator), 
+            str(self.date_updated)
+        )
