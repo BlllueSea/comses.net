@@ -3,6 +3,10 @@ import re
 import json
 import pickle
 import logging
+import itertools
+from datetime import datetime
+from typing import List
+from urllib.parse import urlparse
 from collections import defaultdict
 
 import modelcluster.fields
@@ -372,30 +376,43 @@ class SpamRecommendation(models.Model):
     labelled_by_bio_classifier = models.BooleanField(default=None, null=True) 
     bio_classifier_confidence = models.FloatField(default=0) 
 
-    labelled_by_user_classifier = models.BooleanField(default=None, null=True) 
-    user_classifier_confidence = models.FloatField(default=0) 
+class UserSpamStatus(models.Model):
+    member_profile = models.OneToOneField(
+        MemberProfile, on_delete=models.CASCADE, primary_key=True
+    )
+    # FIXME: add help_text
+    # None = not processed yet
+    # True = bio_classifier considered this user to be spam
+    # False = bio_classifier did not consider this user to be spam
+    labelled_by_bio_classifier = models.BooleanField(default=None, null=True)
+    bio_classifier_confidence = models.FloatField(default=0)
+
+    # similar to bio_classifier
+    labelled_by_user_classifier = models.BooleanField(default=None, null=True)
+    user_classifier_confidence = models.FloatField(default=0)
 
     labelled_by_curator = models.BooleanField(default=None, null=True)
-    date_updated = models.DateField(auto_now=True)
+    last_updated = models.DateField(auto_now=True)
+    is_training_data = models.BooleanField(default=False)
 
     @staticmethod
     def get_recommendations_sorted_by_confidence():
-        return SpamRecommendation.objects.all().order_by('bio_classifier_confidence')
-    
+        return UserSpamStatus.objects.all().order_by("bio_classifier_confidence")
+
     def __str__(self):
-        return "user={}, labelled_by_bio_classifier={}, bio_classifier_confidence={}, labelled_by_user_classifier={}, user_classifier_confidence={}, date_updated={}".format(
-            str(self.member_profile), 
-            str(self.labelled_by_bio_classifier), 
+        return "user={}, labelled_by_bio_classifier={}, bio_classifier_confidence={}, labelled_by_user_classifier={}, user_classifier_confidence={}, labelled_by_curator={}, last_updated={}, is_training_data={}".format(
+            str(self.member_profile),
+            str(self.labelled_by_bio_classifier),
             str(self.bio_classifier_confidence),
-
-            str(self.labelled_by_user_classifier), 
+            str(self.labelled_by_user_classifier),
             str(self.user_classifier_confidence),
-
-            str(self.labelled_by_curator), 
-            str(self.date_updated)
+            str(self.labelled_by_curator),
+            str(self.last_updated),
+            str(self.is_training_data),
         )
 
-# Create a new SpamReccomendation whenever a new MemberProfile is created
+
+# Create a new UserSpamStatus whenever a new MemberProfile is created
 @receiver(post_save, sender=MemberProfile)
 def sync_member_profile_spam(sender, instance, **kwargs):
-    SpamRecommendation(member_profile=instance).save()
+    UserSpamStatus(member_profile=instance).save()
