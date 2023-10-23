@@ -2,21 +2,16 @@ import os
 import re
 import json
 import logging
-import modelcluster.fields
+from collections import defaultdict
+
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth.models import User
 from django.contrib.postgres.aggregates import ArrayAgg
-from django.contrib.postgres.fields import ArrayField
 from django.db import models, transaction
 from django.db.models.signals import post_save
-import pandas as pd
-
-from collections import defaultdict
-from django.conf import settings
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.dispatch import receiver
 from django.db import models, transaction
-from django.db.models import Q
 from django.db.models.signals import post_save
 from django.urls import reverse
 from modelcluster import fields
